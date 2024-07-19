@@ -1,4 +1,4 @@
-openai_api_key: your_openai-api_key
+openai_api_key: b47bf7405b388f3dcb00aa452a2aefdf
 use_reid: true
 vqa_tool: videollava #videollava or gpt-4v
 base_dir: preprocess

@@ -15,7 +15,7 @@ import pandas as pd
 import tqdm
 from langchain import hub
 from langchain.agents import AgentExecutor, create_react_agent, tool
-from langchain_openai import AzureChatOpenAI as ChatOpenAI, OpenAI
+from langchain_openai import AzureChatOpenAI
 from omegaconf import OmegaConf
 
 from captioning import Captioning
@@ -24,15 +24,19 @@ from reid import ReID
 from segment_feature import SegmentFeature
 from tools import ToolKit
 from tracking import Tracking
+os.environ["AZURE_OPENAI_ENDPOINT"] = "https://api.tonggpt.mybigai.ac.cn/proxy/eastus"
+os.environ["AZURE_OPENAI_API_KEY"] = "b47bf7405b388f3dcb00aa452a2aefdf"
 
 
 def ReActAgent(video_path, question, base_dir='preprocess', vqa_tool='videollava', vqa_asset=None, frame_based=False, use_reid=True, openai_api_key='your_openai_api_key', prompt_path='prompts/prompt.txt'):
     assert vqa_tool in ['videollava', 'gpt-4v', 'xcomposer']
+    # __import__('ipdb').set_trace()
     toolkit = ToolKit(video_path=video_path, base_dir=base_dir, vqa_tool=vqa_tool,
                       vqa_asset=vqa_asset, frame_based=frame_based, use_reid=use_reid, openai_api_key=openai_api_key)
     @tool
     def object_memory_querying(question):
         """Given a question about open-vocabulary objects such as 'how many people are there in the video?' or 'In which segments did the brown dog appear?', this tool will give the answer based on the object memory."""
+        print("########Tool object_memory_querying########")
         @tool
         def database_querying(program):
             """given a MySQL program, this tool will query the database and return the results."""
@@ -47,11 +51,12 @@ def ReActAgent(video_path, question, base_dir='preprocess', vqa_tool='videollava
         with open('prompts/database_query_prompt.txt') as f:
             t = f.read()
         prompt.template = t
-        llm = ChatOpenAI(model='gpt-4o', temperature=0.0, openai_api_key=openai_api_key)
+        llm = AzureChatOpenAI(temperature=0, openai_api_version='2024-02-01', azure_deployment="gpt-4o-2024-05-13", streaming=False)
         tools = [database_querying, open_vocabulary_object_retrieval]
         agent = create_react_agent(llm, tools, prompt)
-        agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+        agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, handle_parsing_errors=True)
 
+        print("Step into agent_executor in object_memory_querying")
         original_stdout = sys.stdout
         output_catcher = StringIO()
         sys.stdout = output_catcher
@@ -72,12 +77,14 @@ def ReActAgent(video_path, question, base_dir='preprocess', vqa_tool='videollava
     @tool
     def segment_localization(description):
         """Given a textual description, this tool will return the top-5 candidate segments that are most relevant to the description."""
+        print("########Tool segment_localization########")
         answer = toolkit.segment_localization(description, k=5)
         return '\n'+answer+'\n'
 
     @tool
     def caption_retrieval(input_tuple):
         """given an input tuple (start_segment_ID, end_segment_ID), this tool will retrieve all the captions between the two segments, 15 captions at most. end_segment_ID < start_segment_ID + 15."""
+        print("########Tool caption_retrieval########")
         input_tuple = ast.literal_eval(input_tuple)
         if len(input_tuple) != 2:
             return "\nInvalid input tuple!\n"
@@ -87,6 +94,7 @@ def ReActAgent(video_path, question, base_dir='preprocess', vqa_tool='videollava
     @tool
     def visual_question_answering(input_tuple):
         """Given an input tuple (question, segment_ID), this tool will focus on the video segments starting from segment_ID-1 to segment_ID+1. It will return the description of the video segment and the answer to the question based on the segment."""
+        print("########Tool visual_question_answering########")
         input_tuple = ast.literal_eval(input_tuple)
         if len(input_tuple) != 2:
             return "\nInvalid input tuple!\n"
@@ -101,12 +109,13 @@ def ReActAgent(video_path, question, base_dir='preprocess', vqa_tool='videollava
 
     prompt.template = t
     #print(prompt)
-    llm = ChatOpenAI(model='gpt-4o', temperature=0.0, openai_api_key=openai_api_key)
+    llm = AzureChatOpenAI(temperature=0, openai_api_version='2024-02-01', azure_deployment="gpt-4o-2024-05-13", streaming=False)
     tools = [caption_retrieval, segment_localization, visual_question_answering, object_memory_querying]
     agent = create_react_agent(llm, tools, prompt)
     print(question)
-    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, handle_parsing_errors=True)
 
+    print("Step into agent_executor")
     original_stdout = sys.stdout
     output_catcher = StringIO()
     sys.stdout = output_catcher
@@ -115,6 +124,7 @@ def ReActAgent(video_path, question, base_dir='preprocess', vqa_tool='videollava
 
     output_catcher.seek(0)
     lines = output_catcher.readlines()
+    # print("lines: ", lines)
     color_pattern = re.compile(r'\x1B\[[0-9;]*[mK]')
     answer = None
     log = ""
@@ -201,21 +211,22 @@ def eval_openeqa():
     vqa_tool = 'xcomposer'
     frame_based = True
 
-    data = json.load(open('/media/robot/bigai_ml/all_datasets/OpenEQA/open-eqa-v0.json', 'r'))
+    data = json.load(open('/mnt/bigai_ml/all_datasets/OpenEQA/open-eqa-v0.json', 'r'))
     video_question_list = [i['question'] for i in data]
     video_qid_list = [i['question_id'] for i in data]
     video_path_list = []
     for i in data:
         id = i['episode_history']
         eid = i['episode_history'].split('/')[-1]
-        video_path_list.append(f'/media/robot/bigai_ml/all_datasets/OpenEQA/frames/{id}/{eid}.mp4')
+        video_path_list.append(f'/mnt/bigai_ml/all_datasets/OpenEQA/frames/{id}/{eid}.mp4')
     video_answer_list = [i['answer'] for i in data]
 
     random.seed(12345)
     zipped_lists = list(zip(video_question_list, video_qid_list, video_path_list, video_answer_list))
     random.shuffle(zipped_lists)
     video_question_list, video_qid_list, video_path_list, video_answer_list = zip(*zipped_lists)
-    sample_size = int(len(video_question_list) * 0.1)
+    #sample_size = int(len(video_question_list) * 0.1)
+    sample_size = 10
     video_question_list = list(video_question_list)[:sample_size]
     video_qid_list = list(video_qid_list)[:sample_size]
     video_path_list = list(video_path_list)[:sample_size]
@@ -242,7 +253,7 @@ def eval_openeqa():
     with open('openeqa_eval_results_0.1_all.json', 'w') as f:
         json.dump(results, f)
 
-    result = subprocess.run(['python', 'eval_openeqa.py', 'openeqa_eval_results_0.1_all.json', '--dataset', '/media/robot/bigai_ml/all_datasets/OpenEQA/open-eqa-v0.json'], capture_output=True, text=True)
+    result = subprocess.run(['python', 'eval_openeqa.py', 'openeqa_eval_results_0.1_all.json', '--dataset', '/mnt/bigai_ml/all_datasets/OpenEQA/open-eqa-v0.json'], capture_output=True, text=True)
 
     # Print the stdout of the bash script
     print(result.stdout)
@@ -258,7 +269,7 @@ def eval_videomme():
     vqa_tool = 'xcomposer' # or videollava
     frame_based = True
 
-    data = pd.read_parquet('/media/robot/bigai_ml/all_datasets/Video-MME/videomme/test-00000-of-00001.parquet')
+    data = pd.read_parquet('/mnt/bigai_ml/all_datasets/Video-MME/videomme/test-00000-of-00001.parquet')
     results = {}
     for i in data.iloc:
         if i['duration'] == 'long':
@@ -296,7 +307,7 @@ def eval_videomme():
             video_task_list.append((video_id, qid+1))
             video_question_list.append(question)
             video_answer_list.append(i['answer'])
-            video_path_list.append(f'/media/robot/bigai_ml/all_datasets/Video-MME/video/{results[video_id]["video_url"]}.mp4')
+            video_path_list.append(f'/mnt/bigai_ml/all_datasets/Video-MME/video/{results[video_id]["video_url"]}.mp4')
 
     chains = main(video_path_list=video_path_list,
             video_question_list=video_question_list,
@@ -365,10 +376,15 @@ def eval_generalqa():
 
 
 def main(video_path_list, video_question_list, video_answer_list, base_dir='preprocess', vqa_tool='videollava', frame_based=False, use_reid=True, openai_api_key='sk-proj-f7tYXKiSkl6f6z35upQJT3BlbkFJmGpl5Kvu6xqpEG0H7niu', prompt_path='prompts/prompt.txt'):
-    # preprocess(video_path_list=video_path_list,
-    #            base_dir=base_dir,
-    #            show_tracking=False,
-    #            frame_based=frame_based)
+    
+    # TEST
+    # random.shuffle(video_path_list)
+    video_path_list = video_path_list[:3]
+    
+    preprocess(video_path_list=video_path_list,
+               base_dir=base_dir,
+               show_tracking=False,
+               frame_based=frame_based)
 
     if frame_based:
         assert vqa_tool == 'xcomposer'
@@ -378,18 +394,27 @@ def main(video_path_list, video_question_list, video_answer_list, base_dir='prep
         vqa_asset = None
 
     question_num = len(video_question_list)
+    
+    # TEST
+    question_num = 3
+    print("#################")
+    print("question_num: ", question_num)
+    print("#################")
+    
     chains = []
     for i in tqdm.tqdm(range(question_num)):
         try:
             ret = ReActAgent(video_path=video_path_list[i], question=video_question_list[i], base_dir=base_dir, vqa_tool=vqa_tool, vqa_asset=vqa_asset, frame_based=frame_based, use_reid=use_reid, openai_api_key=openai_api_key, prompt_path=prompt_path)
+            print("ret: ", ret)
             chains.append(ret)
             print(f'Q: {video_question_list[i]}; GT: {video_answer_list[i]}')
         except:
+            print("Error in processing the question.")
             ret = ''
     return chains
 
 
 if __name__ == '__main__':
     # eval_generalqa()
-    # eval_openeqa()
-    eval_videomme()
+    eval_openeqa()
+    # eval_videomme()

@@ -80,10 +80,10 @@ class Captioning:
                     cap.read()
 
                 prompt = '<ImageHere>Please describe this image in briefly.'
-                cv2.imwrite('/tmp/tmp.png', frame)
+                cv2.imwrite('/home/wangweijie/VideoAgent/tmp.png', frame)
                 with torch.no_grad():
                     with torch.cuda.amp.autocast():
-                        text, _ = model.chat(tokenizer, query=prompt, image='/tmp/tmp.png', history=[], do_sample=True) # do_sample=True seems to do better on hm3d
+                        text, _ = model.chat(tokenizer, query=prompt, image='/home/wangweijie/VideoAgent/tmp.png', history=[], do_sample=True) # do_sample=True seems to do better on hm3d
 
                 caption_start_frame = caption_id*fps*self.seconds_per_caption
                 caption_end_frame = (caption_id+1)*fps*self.seconds_per_caption

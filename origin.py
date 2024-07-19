@@ -12,14 +12,12 @@ use_reid = config['use_reid']
 vqa_tool = config['vqa_tool']
 base_dir = config['base_dir']
 
-history = []
 
-def ask_question(video_file, question, chat_bot):
+def ask_question(video_file, question):
     preprocess(video_path_list=[video_file], 
                base_dir=base_dir, 
                show_tracking=False)
     answer, log = ReActAgent(video_path=video_file, question=question, base_dir=base_dir, vqa_tool=vqa_tool, use_reid=use_reid, openai_api_key=openai_api_key)
-    chat_bot.append((question, answer))
     base_name = os.path.basename(video_file).replace(".mp4", "")
     reid_file = os.path.join("preprocess", base_name, "reid.mp4")
     return answer, reid_file, log
@@ -35,7 +33,6 @@ with gr.Row():
     # Define output    
     with gr.Column(scale=6):
         output_text = gr.Textbox(label="Answer")
-        chat_bot = gr.Chatbot(label="ChatBot")
         output_reid = gr.Video(label="Video replay with object re-identifcation")
         output_log = gr.Textbox(label="Inference log")
 
@@ -43,7 +40,7 @@ with gr.Row():
 # Create Gradio interface
 gr.Interface(
     fn=ask_question,
-    inputs=[video_input, question_input, chat_bot],
+    inputs=[video_input, question_input],
     outputs=[output_text, output_reid, output_log],
     title="VideoAgent",
     examples = [

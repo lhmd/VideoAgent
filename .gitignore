@@ -1,6 +1,11 @@
 tool_models/
 cache_dir/
+dataset/
+Video-LLaVA/
 weights.zip
+tmp/
+database.db
+openeqa_eval*
 
 # Byte-compiled / optimized / DLL files
 **/__pycache__

@@ -10,11 +10,16 @@ import openai
 import torch
 import torchvision.transforms as T
 from auto_gptq.modeling import BaseGPTQForCausalLM
-from openai import OpenAI
+from openai import AzureOpenAI
 from PIL import Image
 from sentence_transformers import SentenceTransformer
 from transformers import AutoModel, AutoTokenizer
 
+
+REGION = 'canadaeast'
+API_KEY = "b47bf7405b388f3dcb00aa452a2aefdf"
+API_BASE = "https://api.tonggpt.mybigai.ac.cn/proxy"
+ENDPOINT = f"{API_BASE}/{REGION}"
 
 class InternLMXComposer2QForCausalLM(BaseGPTQForCausalLM):
     layers_block_name = "model.layers"
@@ -44,11 +49,16 @@ def encode_sentences(sentence_list, model_name):
     assert model_name in sentence_models
     emb_list = []
     if model_name in['text-embedding-ada-002', 'text-embedding-3-large']: #openai embedding requires api-key
-        client = OpenAI()
+        client = AzureOpenAI(
+            api_key=API_KEY,
+            api_version="2024-02-01",
+            azure_endpoint=ENDPOINT)
+        # __import__('ipdb').set_trace()
         emb = client.embeddings.create(input=sentence_list, model=model_name)
         for i in range(len(sentence_list)):
             emb_list.append(np.array(emb.data[i].embedding).reshape(1, -1))
         emb_list = np.concatenate(emb_list, axis=0)
+        print("emb_list_shape", emb_list.shape)
         return emb_list
     elif model_name == 'clip': # clip embedding
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -74,4 +84,4 @@ def encode_sentences(sentence_list, model_name):
 
 
 if __name__ == '__main__':
-    encode_sentences(['hello!', 'what'], model_name='text-embedding-ada-002')
+    encode_sentences(['hello!', 'what'], model_name='text-embedding-3-large')

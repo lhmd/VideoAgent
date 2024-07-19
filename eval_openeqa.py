@@ -80,6 +80,15 @@ Response: {prediction}
     """,
 }
 
+from openai import AzureOpenAI
+
+REGION = "eastus"
+MODEL = "gpt-4o-2024-05-13"
+API_KEY = "b47bf7405b388f3dcb00aa452a2aefdf"
+
+API_BASE = "https://api.tonggpt.mybigai.ac.cn/proxy"
+ENDPOINT = f"{API_BASE}/{REGION}"
+
 
 def parse_score(output: str, tag: str = "Your mark:") -> str:
     if output.isdigit():
@@ -122,7 +131,13 @@ def call_openai_api(
     temperature: float = 0.2,
     verbose: bool = False,
 ):
-    client = openai.OpenAI()
+    # client = openai.OpenAI()
+    client = AzureOpenAI(
+        api_key=API_KEY,
+        api_version="2024-02-01",
+        azure_endpoint=ENDPOINT,
+    )
+    print("Start calling openai api")
     completion = client.chat.completions.create(
         model=model,
         messages=messages,
@@ -155,7 +170,7 @@ def get_llm_match_score(
     prompt = load_prompt(prompt_name)
 
     try:
-        set_openai_key(key=openai_key)
+        set_openai_key(key=API_KEY)
         messages = prepare_openai_messages(
             prompt.format(
                 question=question,
@@ -172,6 +187,7 @@ def get_llm_match_score(
             temperature=openai_temperature,
             verbose=verbose,
         )
+        print("output: ", output)
         return parse_score(output)
     except Exception as e:
         traceback.print_exc()
@@ -299,6 +315,12 @@ def main(args: argparse.Namespace):
     print("final score: {:.1f}".format(np.mean(scores)))
     print("final scannet score: {:.1f}".format(np.mean(scannet_scores)))
     print("final hm3d score: {:.1f}".format(np.mean(hm3d_scores)))
+    
+    # 将score写到result.txt中
+    with open('result.txt', 'w') as f:
+        f.write("final score: {:.1f}\n".format(np.mean(scores)))
+        f.write("final scannet score: {:.1f}\n".format(np.mean(scannet_scores)))
+        f.write("final hm3d score: {:.1f}\n".format(np.mean(hm3d_scores)))
 
 
 if __name__ == "__main__":

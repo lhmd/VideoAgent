@@ -132,11 +132,11 @@ class ToolKit:
             success, frame = cap.read()
             if not success:
                 break
-            cv2.imwrite(f'/tmp/xcomposervqa.png', frame)
+            cv2.imwrite(f'/home/wangweijie/VideoAgent/xcomposervqa.png', frame)
             prompt = f'<ImageHere>{question}'
             with torch.no_grad():
                 with torch.cuda.amp.autocast():
-                    ans, _ = self.vqa_model.chat(self.vqa_tokenizer, query=prompt, image='/tmp/xcomposervqa.png', history=[], do_sample=False)
+                    ans, _ = self.vqa_model.chat(self.vqa_tokenizer, query=prompt, image='/home/wangweijie/VideoAgent/xcomposervqa.png', history=[], do_sample=False)
         return ans
 
 
@@ -200,11 +200,11 @@ class ToolKit:
                 success, frame = cap.read()
                 if not success:
                     break
-                cv2.imwrite(f'/tmp/gpt4vvqa.png', frame)
+                cv2.imwrite(f'/home/wangweijie/VideoAgent/gpt4vvqa.png', frame)
                 def encode_image(image_path):
                     with open(image_path, "rb") as image_file:
                         tmp = image_file.read()
-                base64_image = encode_image('/tmp/gpt4vvqa.png')
+                base64_image = encode_image('/home/wangweijie/VideoAgent/gpt4vvqa.png')
 
             headers = {
             "Content-Type": "application/json",

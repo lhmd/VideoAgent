@@ -32,12 +32,17 @@ class SegmentFeature:
     def create_textual_embedding(self):
         """use the sentence encoder model to embed the captions of all the videos"""
         model='text-embedding-3-large'
+        # model = 'clip'
         for video_path in self.video_path_list:
             start_time = time.time()
             base_name = os.path.basename(video_path).replace(".mp4", "")
             video_dir = os.path.join(self.base_dir, base_name)
-            with open(os.path.join(video_dir, 'captions_xcomposer.json')) as f:
-                captions = json.load(f)
+            if self.frame_based:
+                with open(os.path.join(video_dir, 'captions_xcomposer.json')) as f:
+                    captions = json.load(f)
+            else:
+                with open(os.path.join(video_dir, 'captions_lavila.json')) as f:
+                    captions = json.load(f)
             caps = list(captions.values())
             caption_emb = encode_sentences(sentence_list=caps, model_name=model)
             print(caption_emb)
