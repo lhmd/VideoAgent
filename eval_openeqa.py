@@ -139,11 +139,11 @@ def call_openai_api(
     )
     print("Start calling openai api")
     completion = client.chat.completions.create(
-        model=model,
+        model=MODEL,
         messages=messages,
-        seed=seed,
-        max_tokens=max_tokens,
-        temperature=temperature,
+        # seed=seed,
+        # max_tokens=max_tokens,
+        # temperature=temperature,
     )
     if verbose:
         print("openai api response: {}".format(completion))
@@ -242,6 +242,7 @@ def parse_args() -> argparse.Namespace:
 def main(args: argparse.Namespace):
     # load dataset
     dataset = json.load(args.dataset.open("r"))
+    dataset = dataset[120:]
     dataset_question_ids = [item["question_id"] for item in dataset]
     question_id_to_item = {item["question_id"]: item for item in dataset}
     print("found {:,} questions".format(len(dataset)))
@@ -252,6 +253,9 @@ def main(args: argparse.Namespace):
     question_id_to_result = {result["question_id"]: result for result in results}
     print("found {:,} results".format(len(results)))
 
+    # __import__("ipdb").set_trace()
+    print("Len of dataset_question_ids: ", set(dataset_question_ids))
+    print("Len of results_question_ids: ", set(results_question_ids))
     # check that results and dataset match
     if not args.force:
         assert len(dataset_question_ids) == len(results_question_ids)
@@ -316,11 +320,11 @@ def main(args: argparse.Namespace):
     print("final scannet score: {:.1f}".format(np.mean(scannet_scores)))
     print("final hm3d score: {:.1f}".format(np.mean(hm3d_scores)))
     
-    # 将score写到result.txt中
-    with open('result.txt', 'w') as f:
-        f.write("final score: {:.1f}\n".format(np.mean(scores)))
-        f.write("final scannet score: {:.1f}\n".format(np.mean(scannet_scores)))
-        f.write("final hm3d score: {:.1f}\n".format(np.mean(hm3d_scores)))
+    #将score写到result.txt中
+    # with open('result.txt', 'w') as f:
+    #     f.write("final score: {:.1f}\n".format(np.mean(scores)))
+    #     f.write("final scannet score: {:.1f}\n".format(np.mean(scannet_scores)))
+    #     f.write("final hm3d score: {:.1f}\n".format(np.mean(hm3d_scores)))
 
 
 if __name__ == "__main__":

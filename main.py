@@ -212,6 +212,9 @@ def eval_openeqa():
     frame_based = True
 
     data = json.load(open('/mnt/bigai_ml/all_datasets/OpenEQA/open-eqa-v0.json', 'r'))
+    
+    data = data[120:]
+    
     video_question_list = [i['question'] for i in data]
     video_qid_list = [i['question_id'] for i in data]
     video_path_list = []
@@ -226,7 +229,7 @@ def eval_openeqa():
     random.shuffle(zipped_lists)
     video_question_list, video_qid_list, video_path_list, video_answer_list = zip(*zipped_lists)
     #sample_size = int(len(video_question_list) * 0.1)
-    sample_size = 10
+    sample_size = 5
     video_question_list = list(video_question_list)[:sample_size]
     video_qid_list = list(video_qid_list)[:sample_size]
     video_path_list = list(video_path_list)[:sample_size]
@@ -379,7 +382,7 @@ def main(video_path_list, video_question_list, video_answer_list, base_dir='prep
     
     # TEST
     # random.shuffle(video_path_list)
-    video_path_list = video_path_list[:3]
+    # video_path_list = video_path_list[:3]
     
     preprocess(video_path_list=video_path_list,
                base_dir=base_dir,
@@ -396,7 +399,7 @@ def main(video_path_list, video_question_list, video_answer_list, base_dir='prep
     question_num = len(video_question_list)
     
     # TEST
-    question_num = 3
+    # question_num = 3
     print("#################")
     print("question_num: ", question_num)
     print("#################")

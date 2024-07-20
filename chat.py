@@ -5,6 +5,8 @@ from multiprocessing import Process
 import os
 import socket
 from omegaconf import OmegaConf
+from moviepy.editor import VideoFileClip
+import subprocess
 
 config = OmegaConf.load('config/default.yaml')
 openai_api_key = config['openai_api_key']
@@ -16,20 +18,43 @@ history = []
 current_video = None
 
 def build_prompt(history, question):
+    if len(history) == 0:
+        return question
     prompt = "You are a video question-answering agent. Here is the conversation history:\n\n"
     for i, (q, a) in enumerate(history):
         prompt += f"Q{i+1}: {q}\nA{i+1}: {a}\n"
     prompt += f"\nNow, answer the following question based on the video:\nQ: {question}\nA: "
     return prompt
 
+def convert_to_mp4(input_path, output_path):
+    command = [
+        'ffmpeg',
+        '-i', input_path,
+        '-codec:v', 'libx264',
+        '-crf', '23',
+        '-preset', 'medium',
+        '-codec:a', 'aac',
+        '-b:a', '192k',
+        '-y', output_path
+    ]
+    subprocess.run(command, check=True)
+    return output_path
+
 def ask_question(video_file, question):
     global history, current_video
 
     # 检查视频是否已更换
+    print("Processing video:", video_file)
     if video_file != current_video:
         history = []
         current_video = video_file
 
+    if not video_file.endswith(".mp4"):
+        video_file = convert_to_mp4(video_file, video_file.replace(".webm", ".mp4"))
+        # 如果base_dir中存在sample文件夹，则删除
+        if os.path.exists(os.path.join(base_dir, "sample")):
+            os.system(f"rm -rf {os.path.join(base_dir, 'sample')}")
+    
     preprocess(video_path_list=[video_file], 
                base_dir=base_dir, 
                show_tracking=False)
@@ -45,12 +70,12 @@ with gr.Row():
     with gr.Column(scale=6):
         video_input = gr.Video(label="Upload a video")
         question_input = gr.Textbox(label="Ask a question")
+        output_log = gr.Textbox(label="Inference log")
 
     # Define output    
     with gr.Column(scale=6):
         chat_bot = gr.Chatbot(label="ChatBot")
         output_reid = gr.Video(label="Video replay with object re-identifcation")
-        output_log = gr.Textbox(label="Inference log")
 
 # Create Gradio interface
 gr.Interface(
